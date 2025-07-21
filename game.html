@@ -1,0 +1,445 @@
+<!--
+/**
+ * 伏魔记(FMJ) 游戏主页面
+ * 
+ * 文件说明:
+ * - 这是游戏的主入口HTML文件
+ * - 负责加载所有必要的JavaScript文件和初始化游戏画布
+ * 
+ * 主要组件:
+ * 1. 游戏画布 (canvas#lcd)
+ *    - 尺寸: 320x192 像素
+ *    - 显示尺寸: 640x384 像素 (2倍缩放)
+ * 
+ * 2. 按键映射说明
+ *    - [ -> PageUp    (上一页/上一选项)
+ *    - ] -> PageDown  (下一页/下一选项)
+ *    - Space -> Esc   (返回/取消)
+ *    - Enter -> 确认  (确认/选择)
+ * 
+ * 依赖文件:
+ * 1. 基础库:
+ *    - jquery.min.js     : jQuery库
+ *    - encoding.js       : 字符编码支持
+ *    - encoding-indexes.js: 字符编码索引
+ *    - sys.js           : 系统功能支持
+ * 
+ * 2. 游戏核心:
+ *    - rom.js           : 游戏资源
+ *    - kotlin.js        : Kotlin运行时
+ *    - fmj.core.js      : 游戏主程序
+ */
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>伏魔记(FMJ) - Kotlin/JS 版本</title>
+    <script src="libs/js/jquery.min.js"></script>
+    <script src="libs/js/encoding-indexes.js"></script>
+    <script src="libs/js/encoding.js"></script>
+    <script src="libs/js/sys.js"></script>
+    <script src="assets/rom.js"></script>
+
+    <style>
+      body {
+        background-color: #1a1a1a; /* 深色背景让像素更清晰 */
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+        box-sizing: border-box;
+        color: #fff;
+        font-family: "Courier New", monospace;
+      }
+      .game-container {
+        position: relative;
+        width: 100%;
+        max-width: 1280px;
+        margin: 0 auto;
+        background: #000;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      }
+      .lcd {
+        position: relative;
+        width: 100%;
+        padding-top: 60%;
+        background: #000;
+        border: 2px solid #333;
+        box-sizing: border-box;
+        overflow: hidden;
+        image-rendering: pixelated; /* 浏览器标准 */
+        image-rendering: crisp-edges; /* 兼容支持 */
+      }
+      #lcd {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-crisp-edges;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        -ms-interpolation-mode: nearest-neighbor;
+        transform: translateZ(0); /* 启用GPU加速 */
+        backface-visibility: hidden; /* 防止模糊 */
+        background: #fff;
+      }
+      .scale-controls {
+        margin: 15px 0;
+        text-align: center;
+      }
+      .scale-controls button {
+        background: #333;
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        margin: 0 5px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: "Courier New", monospace;
+        transition: background 0.2s;
+        outline: none;
+      }
+      .scale-controls button:hover {
+        background: #444;
+      }
+      .scale-controls button.active {
+        background: #666;
+      }
+      .controls {
+        margin-top: 20px;
+        text-align: center;
+        background: #333;
+        padding: 15px;
+        border-radius: 4px;
+        line-height: 1.6;
+      }
+      @media (min-resolution: 2dppx) {
+        #lcd {
+          transform: translateZ(0) scale(1.01); /* 修复Retina屏幕上的渲染问题 */
+        }
+      }
+      
+      /* 玩家位置闪烁动画 */
+      @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0.3; }
+      }
+      
+      #player-dot {
+        animation: blink 1s infinite;
+      }
+      
+      /* 地图调试区域响应式设计 */
+      #map-debug {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      
+      #map-container {
+        width: 100%;
+        max-width: 800px; /* 最大宽度限制 */
+        margin: 10px auto; /* 居中显示 */
+      }
+      
+      #map-preview {
+        min-width: 200px; /* 最小宽度 */
+        max-height: 60vh; /* 最大高度为视口高度的60% */
+        object-fit: contain; /* 保持宽高比 */
+      }
+      
+      /* 响应式布局 */
+      @media (max-width: 768px) {
+        #map-container {
+          max-width: 100%;
+          padding: 8px;
+        }
+        
+        #map-preview {
+          max-height: 50vh;
+        }
+      }
+      
+      @media (min-width: 1200px) {
+        #map-container {
+          max-width: 1000px;
+        }
+        
+        #map-preview {
+          max-height: 70vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <div class="lcd">
+        <canvas id="lcd" width="320" height="192"></canvas>
+      </div>
+      <div class="scale-controls">
+        <button onclick="setScale(2)" data-scale="2">2x</button>
+        <button onclick="setScale(4)" data-scale="4">4x</button>
+        <button onclick="setScale(6)" data-scale="6">6x</button>
+        <button onclick="setScale(8)" data-scale="8">8x</button>
+        <button onclick="toggleFullscreen()">全屏</button>
+      </div>
+      
+    
+    <!-- 地图调试区域 -->
+    <div id="map-debug" style="margin-top: 20px; background: #333; padding: 15px; border-radius: 4px; color: #fff; font-family: 'Courier New', monospace; display: none;">
+      <h3 style="margin-top: 0; color: #ccc;">当前实时地图</h3>
+      <div id="map-container" style="background: #000; padding: 10px; border-radius: 4px; margin: 10px 0; position: relative;">
+        <img id="map-preview" src="" alt="地图预览" style="width: 100%; max-width: 100%; height: auto; border: 1px solid #666; image-rendering: pixelated; display: block;" />
+        <div id="player-dot" style="position: absolute; background: red; border-radius: 50%; display: none; z-index: 10; box-shadow: 0 0 4px rgba(255,0,0,0.8);"></div>
+      </div>
+      <textarea id="map-base64" readonly style="width: 100%; height: 100px; background: #222; color: #ccc; border: 1px solid #555; padding: 5px; font-family: 'Courier New', monospace; resize: vertical;"></textarea>
+      <button onclick="toggleMapDebug()" style="margin-top: 10px; background: #666; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">隐藏地图调试</button>
+    </div>
+
+    <!-- <div class="controls">
+      按键映射<br />
+      [ -> PageUp<br />
+      ] -> PageDown<br />
+      Space -> Esc<br />
+      Enter -> 输入<br />
+    </div> -->
+  </div>
+
+    <script src="out/production/fmj.core/kotlin.js"></script>
+    <script src="out/production/fmj.core/fmj.core.js"></script>
+    <script>
+      // 缩放控制
+      function setScale(scale) {
+        const container = document.querySelector(".game-container");
+        container.style.maxWidth = 320 * scale + "px";
+
+        // 更新按钮状态
+        document.querySelectorAll(".scale-controls button").forEach((btn) => {
+          if (btn.dataset.scale === scale.toString()) {
+            btn.classList.add("active");
+          } else {
+            btn.classList.remove("active");
+          }
+        });
+
+        // 应用最佳渲染设置
+        const canvas = document.getElementById("lcd");
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+
+        // 强制重绘以确保清晰度
+        canvas.style.display = "none";
+        canvas.offsetHeight; // 触发重排
+        canvas.style.display = "";
+      }
+
+      // 全屏控制
+      function toggleFullscreen() {
+        const container = document.querySelector(".game-container");
+        if (!document.fullscreenElement) {
+          container
+            .requestFullscreen()
+            .then(() => {
+              // 全屏后自动调整到最佳缩放比例
+              setTimeout(setInitialScale, 100);
+            })
+            .catch((err) => {
+              console.log(`全屏错误: ${err.message}`);
+            });
+        } else {
+          document.exitFullscreen().then(() => {
+            // 退出全屏后恢复之前的缩放比例
+            setTimeout(setInitialScale, 100);
+          });
+        }
+      }
+
+      // 自动选择合适的初始缩放比例
+      function setInitialScale() {
+        const width = window.innerWidth - 80; // 考虑padding
+        const height = window.innerHeight - 200; // 考虑其他UI元素
+        const baseWidth = 320;
+        const baseHeight = 192;
+
+        // 计算最大可能的缩放比例
+        const scaleX = Math.floor(width / baseWidth);
+        const scaleY = Math.floor(height / baseHeight);
+        let scale = Math.min(scaleX, scaleY, 8); // 最大8倍缩放
+        scale = Math.max(2, scale); // 最小2倍缩放
+
+        // 优先选择偶数倍缩放
+        if (scale % 2 !== 0 && scale > 2) {
+          scale = scale - 1;
+        }
+
+        setScale(scale);
+      }
+
+      // 地图调试功能
+      function showMapBase64(base64Data) {
+        const mapDebug = document.getElementById('map-debug');
+        const mapPreview = document.getElementById('map-preview');
+        const mapBase64 = document.getElementById('map-base64');
+        
+        if (base64Data) {
+          const dataUrl = 'data:image/png;base64,' + base64Data;
+          mapPreview.src = dataUrl;
+          mapBase64.value = base64Data;
+          mapDebug.style.display = 'block';
+          
+          // 当地图图片加载完成后重新计算玩家位置
+          mapPreview.onload = function() {
+            setTimeout(recalculatePlayerPosition, 100);
+          };
+        }
+      }
+
+      function toggleMapDebug() {
+        const mapDebug = document.getElementById('map-debug');
+        mapDebug.style.display = mapDebug.style.display === 'none' ? 'block' : 'none';
+      }
+
+      // 存储当前玩家位置数据，用于窗口大小变化时重新计算
+      let currentPlayerPosition = null;
+      
+      // 更新玩家位置的闪烁点
+      function updatePlayerPosition(relativeX, relativeY, mapX, mapY, mapWidth, mapHeight) {
+        // 保存当前位置数据
+        currentPlayerPosition = { relativeX, relativeY, mapX, mapY, mapWidth, mapHeight };
+        
+        const mapPreview = document.getElementById('map-preview');
+        const playerDot = document.getElementById('player-dot');
+        const mapContainer = document.getElementById('map-container');
+        
+        if (!mapPreview || !playerDot || !mapContainer) return;
+        
+        // 等待图片加载完成
+        if (mapPreview.naturalWidth === 0) {
+          mapPreview.onload = function() {
+            positionPlayerDot();
+          };
+          return;
+        }
+        
+        positionPlayerDot();
+        
+        function positionPlayerDot() {
+          // 获取图片的实际显示尺寸
+          const imgRect = mapPreview.getBoundingClientRect();
+          const containerRect = mapContainer.getBoundingClientRect();
+          
+          // 计算一个tile在当前显示尺寸下的大小
+          // 每个tile在原始地图中是16x16像素
+          const tileDisplayWidth = imgRect.width / mapWidth;
+          const tileDisplayHeight = imgRect.height / mapHeight;
+          
+          // 点的大小应该是一个tile的大小，但不小于4px，不大于20px
+          const dotSize = Math.max(4, Math.min(20, Math.min(tileDisplayWidth, tileDisplayHeight)));
+          
+          // 计算玩家在图片上的像素位置
+          const dotX = relativeX * imgRect.width + tileDisplayWidth / 2;
+          const dotY = relativeY * imgRect.height + tileDisplayHeight / 2;
+          
+          // 相对于容器的位置
+          const imgOffsetX = mapPreview.offsetLeft;
+          const imgOffsetY = mapPreview.offsetTop;
+          
+          // 更新点的大小和位置
+          const halfDotSize = dotSize / 2;
+          playerDot.style.width = dotSize + 'px';
+          playerDot.style.height = dotSize + 'px';
+          playerDot.style.left = (imgOffsetX + dotX - halfDotSize) + 'px';
+          playerDot.style.top = (imgOffsetY + dotY - halfDotSize) + 'px';
+          playerDot.style.display = 'block';
+          
+          console.log('Player position updated:', {
+            mapPos: [mapX, mapY],
+            mapSize: [mapWidth, mapHeight],
+            relative: [relativeX, relativeY],
+            pixel: [dotX, dotY],
+            imgSize: [imgRect.width, imgRect.height],
+            tileSize: [tileDisplayWidth, tileDisplayHeight],
+            dotSize: dotSize,
+            offset: [imgOffsetX, imgOffsetY]
+          });
+        }
+      }
+      
+      // 窗口大小变化时重新计算玩家位置
+      function recalculatePlayerPosition() {
+        if (currentPlayerPosition) {
+          updatePlayerPosition(
+            currentPlayerPosition.relativeX,
+            currentPlayerPosition.relativeY,
+            currentPlayerPosition.mapX,
+            currentPlayerPosition.mapY,
+            currentPlayerPosition.mapWidth,
+            currentPlayerPosition.mapHeight
+          );
+        }
+      }
+
+      // 将函数添加到全局作用域，供Kotlin调用
+      window.showMapBase64 = showMapBase64;
+      window.updatePlayerPosition = updatePlayerPosition;
+
+      // 等待所有脚本加载完成
+      window.onload = function () {
+        // 设置初始缩放
+        setInitialScale();
+
+        // 设置Canvas渲染上下文
+        const canvas = document.getElementById("lcd");
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+
+        // 使用全局变量访问模块
+        var core = window["fmj.core"].fmj;
+        if (!core) {
+          console.error("fmj.core module not found!");
+          return;
+        }
+        console.log("Module loaded:", core);
+
+        // 游戏速度，默认是1倍速
+        window.gameSpeedMultiple = setGameSpeedMultiple;
+        function setGameSpeedMultiple(multiple) {
+          let game = core.MainGame_init()
+          if (game && typeof game.listenUIEvents_14dthe$ === 'function') {
+            game.listenUIEvents_14dthe$(multiple);
+            return true;
+        }
+          return false;
+        }
+      };
+
+      // 监听窗口大小变化
+      let resizeTimeout;
+      let mapResizeTimeout;
+      window.addEventListener("resize", function () {
+        clearTimeout(resizeTimeout);
+        clearTimeout(mapResizeTimeout);
+        
+        // 游戏缩放调整
+        resizeTimeout = setTimeout(setInitialScale, 250);
+        
+        // 地图预览和玩家位置调整
+        mapResizeTimeout = setTimeout(function() {
+          recalculatePlayerPosition();
+        }, 300);
+      });
+
+      // 监听全屏变化
+      document.addEventListener("fullscreenchange", function () {
+        setTimeout(setInitialScale, 100);
+        setTimeout(recalculatePlayerPosition, 200);
+      });
+    </script>
+  </body>
+</html>
