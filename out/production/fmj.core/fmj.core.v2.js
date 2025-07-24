@@ -26,6 +26,9 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
   else {}
 }(this, function (_, Kotlin) {
   'use strict';
+  var toString = Kotlin.toString;
+  var println = Kotlin.kotlin.io.println_s8jyv4$;
+  var Exception = Kotlin.kotlin.Exception;
   var L40 = Kotlin.Long.fromInt(40);
   var Unit = Kotlin.kotlin.Unit;
   var numberToInt = Kotlin.numberToInt;
@@ -35,7 +38,6 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
   var Enum = Kotlin.kotlin.Enum;
   var throwISE = Kotlin.throwISE;
   var ensureNotNull = Kotlin.ensureNotNull;
-  var println = Kotlin.kotlin.io.println_s8jyv4$;
   var toIntArray = Kotlin.kotlin.collections.toIntArray_fx3nzu$;
   var zip = Kotlin.kotlin.collections.zip_mgkctd$;
   var map = Kotlin.kotlin.sequences.map_z5avom$;
@@ -85,7 +87,6 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
   var maxOrNull = Kotlin.kotlin.collections.maxOrNull_exjks8$;
   var toMutableList_0 = Kotlin.kotlin.collections.toMutableList_964n91$;
   var toByteArray = Kotlin.kotlin.collections.toByteArray_kdx1v$;
-  var toString = Kotlin.toString;
   var lazy = Kotlin.kotlin.lazy_klfg04$;
   var get_indices_1 = Kotlin.kotlin.text.get_indices_gw00vp$;
   var HashMap_init = Kotlin.kotlin.collections.HashMap_init_bwtc7$;
@@ -100,8 +101,9 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
   var filterNotNull_1 = Kotlin.kotlin.collections.filterNotNull_m3lr2h$;
   var firstOrNull = Kotlin.kotlin.collections.firstOrNull_2p1efm$;
   var get_indices_2 = Kotlin.kotlin.collections.get_indices_m7z4lg$;
-  var Exception = Kotlin.kotlin.Exception;
+  var joinToString = Kotlin.kotlin.collections.joinToString_fmv235$;
   var startsWith = Kotlin.kotlin.text.startsWith_7epoxm$;
+  var getOrNull = Kotlin.kotlin.collections.getOrNull_8ujjk8$;
   var sortedWith = Kotlin.kotlin.collections.sortedWith_eknfly$;
   var defineInlineFunction = Kotlin.defineInlineFunction;
   var L400 = Kotlin.Long.fromInt(400);
@@ -119,7 +121,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
   var toByteArray_0 = Kotlin.kotlin.collections.toByteArray_vn5r1x$;
   var MutableList = Kotlin.kotlin.collections.MutableList;
   var CharRange = Kotlin.kotlin.ranges.CharRange;
-  var joinToString = Kotlin.kotlin.collections.joinToString_s78119$;
+  var joinToString_0 = Kotlin.kotlin.collections.joinToString_s78119$;
   var toList_0 = Kotlin.kotlin.collections.toList_964n91$;
   ScreenViewType.prototype = Object.create(Enum.prototype);
   ScreenViewType.prototype.constructor = ScreenViewType;
@@ -246,7 +248,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
   Paint$Style.prototype = Object.create(Enum.prototype);
   Paint$Style.prototype.constructor = Paint$Style;
   function MainGame() {
-    this.version = '006';
+    this.version = '2.0.1';
     this.canvas_0 = new Canvas(Bitmap_init(Global_getInstance().SCREEN_WIDTH, Global_getInstance().SCREEN_HEIGHT));
     this.screenStack_0 = new ScreenStack(this);
     this.vm_hiku1h$_0 = new ScriptVM(this);
@@ -278,9 +280,24 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     return Combat$Companion_getInstance();
   }});
   MainGame.prototype.start = function () {
+    this.setToGlobalWindow_0();
     this.listenUIEvents_14dthe$(1.0);
     var scr = new ScreenAnimation(this, 247);
     this.screenStack_0.pushScreen_2o7n0o$(scr);
+  };
+  MainGame.prototype.setToGlobalWindow_0 = function () {
+    try {
+      setTimeout(function () {
+        if (typeof window !== 'undefined') {
+          window.fmjGame = this;
+        }
+      }.bind(this), 100);
+    } catch (e) {
+      if (Kotlin.isType(e, Exception)) {
+        println('Failed to set window.fmjGame: ' + toString(e.message));
+      } else
+        throw e;
+    }
   };
   MainGame.prototype.draw = function () {
     this.screenStack_0.draw_9in0vv$(this.canvas_0);
@@ -8882,7 +8899,11 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     var i = Kotlin.imul(y, this.mapWidth) + x | 0;
     return ensureNotNull(this.mData_0)[i * 2 | 0] & 127;
   };
-  ResMap.prototype.drawMap_2g4tob$ = function (canvas, left, top) {
+  ResMap.prototype.drawMap_pya2lz$ = function (canvas, left, top, treasureBoxes, showEvents) {
+    if (treasureBoxes === void 0)
+      treasureBoxes = emptyList();
+    if (showEvents === void 0)
+      showEvents = false;
     var tmp$, tmp$_0, tmp$_1, tmp$_2;
     if (this.mTiles_0 == null) {
       this.mTiles_0 = new Tiles(this.mTilIndex_0);
@@ -8914,10 +8935,94 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
         var b_2 = JsMath.min(tileY, b_1);
         var safeTileY = JsMath.max(0, b_2);
         ensureNotNull(this.mTiles_0).draw_tj1hu5$(canvas, Kotlin.imul(x, Tiles$Companion_getInstance().WIDTH) + Global_getInstance().MAP_LEFT_OFFSET | 0, Kotlin.imul(y, Tiles$Companion_getInstance().HEIGHT), this.getTileIndex_0(safeTileX, safeTileY));
+        if (mapX >= 0 && mapX < this.mapWidth && mapY >= 0 && mapY < this.mapHeight) {
+          var sx = Kotlin.imul(x, Tiles$Companion_getInstance().WIDTH) + Global_getInstance().MAP_LEFT_OFFSET + 2 | 0;
+          var sy = Kotlin.imul(y, Tiles$Companion_getInstance().HEIGHT) + 2 | 0;
+          var firstOrNull$result;
+          firstOrNull$break: do {
+            var tmp$_3;
+            tmp$_3 = treasureBoxes.iterator();
+            while (tmp$_3.hasNext()) {
+              var element = tmp$_3.next();
+              if (element.x === mapX && element.y === mapY) {
+                firstOrNull$result = element;
+                break firstOrNull$break;
+              }
+            }
+            firstOrNull$result = null;
+          }
+           while (false);
+          var treasureBox = firstOrNull$result;
+          if (treasureBox != null) {
+            var fillColor = treasureBox.isCollected ? Color$Companion_getInstance().GRAY : Color$Companion_getInstance().BLUE;
+            var $receiver = new Paint();
+            $receiver.color = fillColor;
+            $receiver.style = Paint$Style$FILL_getInstance();
+            var fillPaint = $receiver;
+            var $receiver_0 = new Paint();
+            $receiver_0.color = Color$Companion_getInstance().BLACK;
+            $receiver_0.style = Paint$Style$STROKE_getInstance();
+            $receiver_0.strokeWidth = 1;
+            var blackPaint = $receiver_0;
+            canvas.drawRect_x3aj6j$(sx + 4 | 0, sy + 4 | 0, sx + 8 | 0, sy + 8 | 0, fillPaint);
+            canvas.drawRect_x3aj6j$(sx + 4 | 0, sy + 4 | 0, sx + 8 | 0, sy + 8 | 0, blackPaint);
+          } else if (showEvents) {
+            var eventNum = this.getEventNum_vux9f0$(mapX, mapY);
+            if (eventNum !== 0) {
+              var $receiver_1 = new Paint();
+              $receiver_1.color = Color$Companion_getInstance().RED;
+              $receiver_1.style = Paint$Style$FILL_getInstance();
+              var redPaint = $receiver_1;
+              canvas.drawRect_x3aj6j$(sx + 4 | 0, sy + 4 | 0, sx + 8 | 0, sy + 8 | 0, redPaint);
+            }
+          }
+        }
       }
     }
   };
-  ResMap.prototype.drawWholeMap_2g4tob$ = function (canvas, x, y) {
+  function ResMap$TreasureBoxInfo(x, y, name, isCollected) {
+    if (isCollected === void 0)
+      isCollected = false;
+    this.x = x;
+    this.y = y;
+    this.name = name;
+    this.isCollected = isCollected;
+  }
+  ResMap$TreasureBoxInfo.$metadata$ = {kind: Kind_CLASS, simpleName: 'TreasureBoxInfo', interfaces: []};
+  ResMap$TreasureBoxInfo.prototype.component1 = function () {
+    return this.x;
+  };
+  ResMap$TreasureBoxInfo.prototype.component2 = function () {
+    return this.y;
+  };
+  ResMap$TreasureBoxInfo.prototype.component3 = function () {
+    return this.name;
+  };
+  ResMap$TreasureBoxInfo.prototype.component4 = function () {
+    return this.isCollected;
+  };
+  ResMap$TreasureBoxInfo.prototype.copy_ybdshj$ = function (x, y, name, isCollected) {
+    return new ResMap$TreasureBoxInfo(x === void 0 ? this.x : x, y === void 0 ? this.y : y, name === void 0 ? this.name : name, isCollected === void 0 ? this.isCollected : isCollected);
+  };
+  ResMap$TreasureBoxInfo.prototype.toString = function () {
+    return 'TreasureBoxInfo(x=' + Kotlin.toString(this.x) + (', y=' + Kotlin.toString(this.y)) + (', name=' + Kotlin.toString(this.name)) + (', isCollected=' + Kotlin.toString(this.isCollected)) + ')';
+  };
+  ResMap$TreasureBoxInfo.prototype.hashCode = function () {
+    var result = 0;
+    result = result * 31 + Kotlin.hashCode(this.x) | 0;
+    result = result * 31 + Kotlin.hashCode(this.y) | 0;
+    result = result * 31 + Kotlin.hashCode(this.name) | 0;
+    result = result * 31 + Kotlin.hashCode(this.isCollected) | 0;
+    return result;
+  };
+  ResMap$TreasureBoxInfo.prototype.equals = function (other) {
+    return this === other || (other !== null && (typeof other === 'object' && (Object.getPrototypeOf(this) === Object.getPrototypeOf(other) && (Kotlin.equals(this.x, other.x) && Kotlin.equals(this.y, other.y) && Kotlin.equals(this.name, other.name) && Kotlin.equals(this.isCollected, other.isCollected)))));
+  };
+  ResMap.prototype.drawWholeMap_9ilbcx$ = function (canvas, x, y, showEvents, treasureBoxes) {
+    if (showEvents === void 0)
+      showEvents = true;
+    if (treasureBoxes === void 0)
+      treasureBoxes = emptyList();
     var tmp$, tmp$_0;
     if (this.mTiles_0 == null) {
       this.mTiles_0 = new Tiles(this.mTilIndex_0);
@@ -8929,11 +9034,41 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
         var sx = Kotlin.imul(tx, Tiles$Companion_getInstance().WIDTH) + x | 0;
         var sy = Kotlin.imul(ty, Tiles$Companion_getInstance().HEIGHT) + y | 0;
         ensureNotNull(this.mTiles_0).draw_tj1hu5$(canvas, sx, sy, this.getTileIndex_0(tx, ty));
-        var event = this.getEventNum_vux9f0$(tx, ty);
-        if (event !== 0) {
-          Global_getInstance().bgColor = Color$Companion_getInstance().RED;
-          TextRender_getInstance().drawText_kkuqvh$(canvas, event.toString(), sx, sy);
-          Global_getInstance().bgColor = Global_getInstance().COLOR_WHITE;
+        var firstOrNull$result;
+        firstOrNull$break: do {
+          var tmp$_1;
+          tmp$_1 = treasureBoxes.iterator();
+          while (tmp$_1.hasNext()) {
+            var element = tmp$_1.next();
+            if (element.x === tx && element.y === ty) {
+              firstOrNull$result = element;
+              break firstOrNull$break;
+            }
+          }
+          firstOrNull$result = null;
+        }
+         while (false);
+        var treasureBox = firstOrNull$result;
+        if (treasureBox != null) {
+          var fillColor = treasureBox.isCollected ? Color$Companion_getInstance().GRAY : Color$Companion_getInstance().BLUE;
+          var $receiver = new Paint();
+          $receiver.color = fillColor;
+          $receiver.style = Paint$Style$FILL_getInstance();
+          var fillPaint = $receiver;
+          var $receiver_0 = new Paint();
+          $receiver_0.color = Color$Companion_getInstance().BLACK;
+          $receiver_0.style = Paint$Style$STROKE_getInstance();
+          $receiver_0.strokeWidth = 1;
+          var blackPaint = $receiver_0;
+          canvas.drawRect_x3aj6j$(sx + 4 | 0, sy + 4 | 0, sx + 12 | 0, sy + 12 | 0, fillPaint);
+          canvas.drawRect_x3aj6j$(sx + 4 | 0, sy + 4 | 0, sx + 12 | 0, sy + 12 | 0, blackPaint);
+        } else {
+          var event = this.getEventNum_vux9f0$(tx, ty);
+          if (showEvents && event !== 0) {
+            Global_getInstance().bgColor = Color$Companion_getInstance().RED;
+            TextRender_getInstance().drawText_kkuqvh$(canvas, event.toString(), sx, sy);
+            Global_getInstance().bgColor = Global_getInstance().COLOR_WHITE;
+          }
         }
       }
     }
@@ -9899,7 +10034,9 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
   ScreenMainGame.prototype.drawSceneWithoutClear_9in0vv$ = function (canvas) {
     var tmp$;
     if (this.currentMap != null) {
-      ensureNotNull(this.currentMap).drawMap_2g4tob$(canvas, this.mMapScreenPos_0.x, this.mMapScreenPos_0.y);
+      var treasureBoxes = this.getTreasureBoxesForViewport_0();
+      var mapContainerState = window.mapContainerState || false;
+      ensureNotNull(this.currentMap).drawMap_pya2lz$(canvas, this.mMapScreenPos_0.x, this.mMapScreenPos_0.y, treasureBoxes, mapContainerState);
     }
     var playY = 10000;
     var hasPlayerBeenDrawn = false;
@@ -10015,7 +10152,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     if (this.canPlayerWalk_0(x - 1 | 0, y)) {
       ensureNotNull(this.player).walk_rtfsey$(Direction$West_getInstance());
       var playerScreenPos = ensureNotNull(this.player).getPosOnScreen_wl9rgt$(this.mMapScreenPos_0);
-      if (playerScreenPos.x <= 15) {
+      if (playerScreenPos.x <= 10) {
         tmp$ = this.mMapScreenPos_0;
         tmp$.x = tmp$.x - 1 | 0;
         SaveLoadGame_getInstance().MapScreenX = this.mMapScreenPos_0.x;
@@ -10033,7 +10170,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     if (this.canPlayerWalk_0(x, y - 1 | 0)) {
       ensureNotNull(this.player).walk_rtfsey$(Direction$North_getInstance());
       var playerScreenPos = ensureNotNull(this.player).getPosOnScreen_wl9rgt$(this.mMapScreenPos_0);
-      if (playerScreenPos.y <= 8) {
+      if (playerScreenPos.y <= 4) {
         tmp$ = this.mMapScreenPos_0;
         tmp$.y = tmp$.y - 1 | 0;
         SaveLoadGame_getInstance().MapScreenY = this.mMapScreenPos_0.y;
@@ -10051,8 +10188,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     if (this.canPlayerWalk_0(x + 1 | 0, y)) {
       ensureNotNull(this.player).walk_rtfsey$(Direction$East_getInstance());
       var playerScreenPos = ensureNotNull(this.player).getPosOnScreen_wl9rgt$(this.mMapScreenPos_0);
-      var screenWidth = Global_getInstance().SCREEN_WIDTH / 16 | 0;
-      if (playerScreenPos.x >= (screenWidth - 5 | 0)) {
+      if (playerScreenPos.x >= 10) {
         tmp$ = this.mMapScreenPos_0;
         tmp$.x = tmp$.x + 1 | 0;
         SaveLoadGame_getInstance().MapScreenX = this.mMapScreenPos_0.x;
@@ -10070,8 +10206,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     if (this.canPlayerWalk_0(x, y + 1 | 0)) {
       ensureNotNull(this.player).walk_rtfsey$(Direction$South_getInstance());
       var playerScreenPos = ensureNotNull(this.player).getPosOnScreen_wl9rgt$(this.mMapScreenPos_0);
-      var screenHeight = Global_getInstance().SCREEN_HEIGHT / 16 | 0;
-      if (playerScreenPos.y >= (screenHeight - 8 | 0)) {
+      if (playerScreenPos.y >= 6) {
         tmp$ = this.mMapScreenPos_0;
         tmp$.y = tmp$.y + 1 | 0;
         SaveLoadGame_getInstance().MapScreenY = this.mMapScreenPos_0.y;
@@ -10102,10 +10237,10 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     SaveLoadGame_getInstance().MapScreenX = x;
     SaveLoadGame_getInstance().MapScreenY = y;
     println('loadMap type=' + type + ' index=' + index + ' x=' + x + ' y=' + y);
-    this.generateMapBase64_0();
+    this.generateMapBase64();
     this.updatePlayerPositionInBrowser_0();
   };
-  ScreenMainGame.prototype.generateMapBase64_0 = function () {
+  ScreenMainGame.prototype.generateMapBase64 = function () {
     if (this.currentMap == null)
       return;
     try {
@@ -10115,7 +10250,9 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
       var fullMapBitmap = Bitmap_init(fullMapWidth, fullMapHeight);
       var fullMapCanvas = new Canvas(fullMapBitmap);
       fullMapCanvas.drawColor_we4i00$(Global_getInstance().COLOR_WHITE);
-      ensureNotNull(this.currentMap).drawWholeMap_2g4tob$(fullMapCanvas, 0, 0);
+      var mapContainerState = window.mapContainerState || false;
+      var treasureBoxes = this.getTreasureBoxes_0();
+      ensureNotNull(this.currentMap).drawWholeMap_9ilbcx$(fullMapCanvas, 0, 0, mapContainerState, treasureBoxes);
       var base64String = this.bitmapToBase64_0(fullMapBitmap);
       if (base64String.length > 0) {
         this.showMapInBrowser_0(base64String);
@@ -10132,7 +10269,9 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     if (this.currentMap == null)
       return;
     canvas.drawColor_we4i00$(Global_getInstance().COLOR_WHITE);
-    ensureNotNull(this.currentMap).drawWholeMap_2g4tob$(canvas, 0, 0);
+    var mapContainerState = window.mapContainerState || false;
+    var treasureBoxes = this.getTreasureBoxes_0();
+    ensureNotNull(this.currentMap).drawWholeMap_9ilbcx$(canvas, 0, 0, mapContainerState, treasureBoxes);
   };
   ScreenMainGame.prototype.showMapInBrowser_0 = function (base64String) {
     try {
@@ -10167,9 +10306,38 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
         }
       }
       updatePlayerPos(relativeX, relativeY, playerPos.x, playerPos.y, mapWidth_0, mapHeight_0);
+      this.updateTreasureBoxesInBrowser();
     } catch (e) {
       if (Kotlin.isType(e, Exception)) {
         println('Error updating player position: ' + toString(e.message));
+      } else
+        throw e;
+    }
+  };
+  ScreenMainGame.prototype.updateTreasureBoxesInBrowser = function () {
+    if (this.currentMap == null)
+      return;
+    try {
+      var treasureBoxes = this.getTreasureBoxes_0();
+      var mapWidth_0 = ensureNotNull(this.currentMap).mapWidth;
+      var mapHeight_0 = ensureNotNull(this.currentMap).mapHeight;
+      var destination = ArrayList_init_0(collectionSizeOrDefault(treasureBoxes, 10));
+      var tmp$;
+      tmp$ = treasureBoxes.iterator();
+      while (tmp$.hasNext()) {
+        var item = tmp$.next();
+        destination.add_11rb$('{' + '"' + 'x' + '"' + ':' + item.x + ',' + '"' + 'y' + '"' + ':' + item.y + ',' + '"' + 'name' + '"' + ':' + '"' + item.name + '"' + ',' + '"' + 'isCollected' + '"' + ':' + item.isCollected + '}');
+      }
+      var treasureBoxesJson_0 = joinToString(destination, ',', '[', ']');
+      function updateTreasureBoxes(treasureBoxesJson, mapWidth, mapHeight) {
+        if (typeof window !== 'undefined' && window.updateTreasureBoxes) {
+          window.updateTreasureBoxes(JSON.parse(treasureBoxesJson), mapWidth, mapHeight);
+        }
+      }
+      updateTreasureBoxes(treasureBoxesJson_0, mapWidth_0, mapHeight_0);
+    } catch (e) {
+      if (Kotlin.isType(e, Exception)) {
+        println('Error updating treasure boxes: ' + toString(e.message));
       } else
         throw e;
     }
@@ -10329,11 +10497,41 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     var tmp$;
     var box = Kotlin.isType(tmp$ = DatLib$Companion_getInstance().getRes_2et8c9$(DatLib$ResType$ARS_getInstance(), 4, boxIndex), SceneObj) ? tmp$ : throwCCE();
     box.setPosInMap_vux9f0$(x, y);
+    var savedBox = getOrNull(SaveLoadGame_getInstance().NpcObjs, id);
+    if (Kotlin.isType(savedBox, SceneObj) && savedBox.posInMap.x === x && savedBox.posInMap.y === y) {
+      box.step = savedBox.step;
+      println('createBox: Restored saved state for box ' + id + ' at (' + x + ',' + y + '), step=' + box.step);
+    }
     this.mNPCObj_0[id] = box;
     return box;
   };
   ScreenMainGame.prototype.deleteBox_za3lpa$ = function (id) {
     this.mNPCObj_0[id] = NPC$Companion_getInstance().empty;
+  };
+  ScreenMainGame.prototype.syncNPCStateToSave = function () {
+    SaveLoadGame_getInstance().NpcObjs = this.mNPCObj_0.slice();
+    println('syncNPCStateToSave: Synced NPC states to save system');
+  };
+  ScreenMainGame.prototype.getTreasureBoxes_0 = function () {
+    var treasureBoxes = ArrayList_init();
+    var $receiver = this.mNPCObj_0;
+    var tmp$, tmp$_0;
+    var index = 0;
+    for (tmp$ = 0; tmp$ !== $receiver.length; ++tmp$) {
+      var item = $receiver[tmp$];
+      if ((tmp$_0 = index, index = tmp$_0 + 1 | 0, tmp$_0) > 0 && Kotlin.isType(item, SceneObj) && !item.isEmpty) {
+        var isCollected = item.step === 2;
+        treasureBoxes.add_11rb$(new ResMap$TreasureBoxInfo(item.posInMap.x, item.posInMap.y, item.name, isCollected));
+      }
+    }
+    return treasureBoxes;
+  };
+  ScreenMainGame.prototype.getTreasureBoxesForViewport_0 = function () {
+    var mapContainerState = window.mapContainerState || false;
+    if (!mapContainerState) {
+      return emptyList();
+    }
+    return this.getTreasureBoxes_0();
   };
   function ScreenMainGame$mCanWalk$ObjectLiteral(this$ScreenMainGame) {
     this.this$ScreenMainGame = this$ScreenMainGame;
@@ -10777,7 +10975,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     var cmd_choice = ScriptVM_init$cmd_choice(this);
     var cmd_createbox = ScriptVM_init$cmd_createbox(this);
     var cmd_deletebox = ScriptVM_init$cmd_deletebox(this);
-    var cmd_gaingoods = ScriptVM_init$cmd_gaingoods;
+    var cmd_gaingoods = ScriptVM_init$cmd_gaingoods(this);
     var cmd_initfight = ScriptVM_init$cmd_initfight(this);
     var cmd_fightenable = ScriptVM_init$cmd_fightenable;
     var cmd_fightdisenable = ScriptVM_init$cmd_fightdisenable;
@@ -10790,7 +10988,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     var cmd_learnmagic = ScriptVM_init$cmd_learnmagic(this);
     var cmd_sale = ScriptVM_init$cmd_sale(this);
     var cmd_npcmovemod = ScriptVM_init$cmd_npcmovemod(this);
-    var cmd_message = ScriptVM_init$cmd_message;
+    var cmd_message = ScriptVM_init$cmd_message(this);
     var cmd_deletegoods = ScriptVM_init$cmd_deletegoods;
     var cmd_resumeactorhp = ScriptVM_init$cmd_resumeactorhp(this);
     var cmd_actorlayerup = ScriptVM_init$cmd_actorlayerup(this);
@@ -10812,7 +11010,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     var cmd_callchapter = ScriptVM_init$cmd_callchapter(this);
     var cmd_discmp = ScriptVM_init$cmd_discmp;
     var cmd_return = ScriptVM_init$cmd_return(this);
-    var cmd_timemsg = ScriptVM_init$cmd_timemsg;
+    var cmd_timemsg = ScriptVM_init$cmd_timemsg(this);
     var cmd_disablesave = ScriptVM_init$cmd_disablesave;
     var cmd_enablesave = ScriptVM_init$cmd_enablesave;
     var cmd_gamesave = ScriptVM_init$cmd_gamesave(this);
@@ -11681,7 +11879,8 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
       return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_deletebox$lambda(this$ScriptVM, boxid), null, 2);
     };
   }
-  function ScriptVM_init$cmd_gaingoods$lambda$ObjectLiteral(closure$msg) {
+  function ScriptVM_init$cmd_gaingoods$lambda$ObjectLiteral(this$ScriptVM, closure$msg) {
+    this.this$ScriptVM = this$ScriptVM;
     this.closure$msg = closure$msg;
     this.time_8be2vx$ = L0;
     this.isAnyKeyPressed_8be2vx$ = false;
@@ -11700,22 +11899,46 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     this.downKey_8be2vx$ = key;
   };
   ScriptVM_init$cmd_gaingoods$lambda$ObjectLiteral.prototype.draw_9in0vv$ = function (canvas) {
+    if (!Combat$Companion_getInstance().IsActive()) {
+      this.this$ScriptVM.game.mainScene.drawSceneWithoutClear_9in0vv$(canvas);
+    }
     Util_getInstance().showMessage_g6cl4j$(canvas, this.closure$msg);
   };
   ScriptVM_init$cmd_gaingoods$lambda$ObjectLiteral.$metadata$ = {kind: Kind_CLASS, interfaces: [Operate]};
-  function ScriptVM_init$cmd_gaingoods$lambda(closure$goods, closure$msg) {
+  function ScriptVM_init$cmd_gaingoods$lambda(closure$goods, this$ScriptVM, closure$msg) {
     return function (it) {
       ScriptVM$Companion_getInstance().cmdPrint_61zpoe$('cmd_gaingoods ' + closure$goods.name);
       closure$goods.goodsNum = 1;
       Player$Companion_getInstance().sGoodsList.addGoods_vux9f0$(closure$goods.type, closure$goods.index);
-      return new ScriptVM_init$cmd_gaingoods$lambda$ObjectLiteral(closure$msg);
+      var player = this$ScriptVM.game.mainScene.player;
+      if (player != null) {
+        var playerPos = player.posInMap;
+        var boxUpdated = false;
+        for (var dx = -1; dx <= 1; dx++) {
+          for (var dy = -1; dy <= 1; dy++) {
+            var npc = this$ScriptVM.game.mainScene.getNpcFromPosInMap_vux9f0$(playerPos.x + dx | 0, playerPos.y + dy | 0);
+            if (Kotlin.isType(npc, SceneObj) && !npc.isEmpty && npc.step !== 2) {
+              npc.step = 2;
+              boxUpdated = true;
+              println('cmd_gaingoods: Set treasure box at (' + (playerPos.x + dx | 0) + ',' + (playerPos.y + dy | 0) + ') to collected state');
+            }
+          }
+        }
+        if (boxUpdated) {
+          this$ScriptVM.game.mainScene.syncNPCStateToSave();
+          this$ScriptVM.game.mainScene.updateTreasureBoxesInBrowser();
+        }
+      }
+      return new ScriptVM_init$cmd_gaingoods$lambda$ObjectLiteral(this$ScriptVM, closure$msg);
     };
   }
-  function ScriptVM_init$cmd_gaingoods(code, start) {
-    var tmp$;
-    var goods = Kotlin.isType(tmp$ = DatLib$Companion_getInstance().getRes_2et8c9$(DatLib$ResType$GRS_getInstance(), ScriptVM$Companion_getInstance().get2ByteInt_ir89t6$(code, start), ScriptVM$Companion_getInstance().get2ByteInt_ir89t6$(code, start + 2 | 0)), BaseGoods) ? tmp$ : throwCCE();
-    var msg = '\u83B7\u5F97:' + goods.name;
-    return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_gaingoods$lambda(goods, msg), null, 4);
+  function ScriptVM_init$cmd_gaingoods(this$ScriptVM) {
+    return function (code, start) {
+      var tmp$;
+      var goods = Kotlin.isType(tmp$ = DatLib$Companion_getInstance().getRes_2et8c9$(DatLib$ResType$GRS_getInstance(), ScriptVM$Companion_getInstance().get2ByteInt_ir89t6$(code, start), ScriptVM$Companion_getInstance().get2ByteInt_ir89t6$(code, start + 2 | 0)), BaseGoods) ? tmp$ : throwCCE();
+      var msg = '\u83B7\u5F97:' + goods.name;
+      return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_gaingoods$lambda(goods, this$ScriptVM, msg), null, 4);
+    };
   }
   function ScriptVM_init$cmd_initfight$lambda(this$ScriptVM, closure$arr, closure$scrb, closure$scrl, closure$scrr) {
     return function (it) {
@@ -11905,7 +12128,8 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
       return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_npcmovemod$lambda(state, this$ScriptVM, id), null, 4);
     };
   }
-  function ScriptVM_init$cmd_message$lambda$ObjectLiteral(closure$msg) {
+  function ScriptVM_init$cmd_message$lambda$ObjectLiteral(this$ScriptVM, closure$msg) {
+    this.this$ScriptVM = this$ScriptVM;
     this.closure$msg = closure$msg;
     this.downKey_8be2vx$ = 0;
     this.isAnyKeyDown_8be2vx$ = false;
@@ -11922,19 +12146,24 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     this.downKey_8be2vx$ = key;
   };
   ScriptVM_init$cmd_message$lambda$ObjectLiteral.prototype.draw_9in0vv$ = function (canvas) {
+    if (!Combat$Companion_getInstance().IsActive()) {
+      this.this$ScriptVM.game.mainScene.drawSceneWithoutClear_9in0vv$(canvas);
+    }
     Util_getInstance().showMessage_2yb3jp$(canvas, this.closure$msg);
   };
   ScriptVM_init$cmd_message$lambda$ObjectLiteral.$metadata$ = {kind: Kind_CLASS, interfaces: [Operate]};
-  function ScriptVM_init$cmd_message$lambda(closure$msg) {
+  function ScriptVM_init$cmd_message$lambda(closure$msg, this$ScriptVM) {
     return function (it) {
       ScriptVM$Companion_getInstance().cmdPrint_61zpoe$('cmd_message ' + gbkString_0(closure$msg));
-      return new ScriptVM_init$cmd_message$lambda$ObjectLiteral(closure$msg);
+      return new ScriptVM_init$cmd_message$lambda$ObjectLiteral(this$ScriptVM, closure$msg);
     };
   }
-  function ScriptVM_init$cmd_message(code, start) {
-    var msg = ScriptVM$Companion_getInstance().getStringBytes_ir89t6$(code, start);
-    var desc = 'message ' + gbkString_0(msg);
-    return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_message$lambda(msg), desc, msg.length);
+  function ScriptVM_init$cmd_message(this$ScriptVM) {
+    return function (code, start) {
+      var msg = ScriptVM$Companion_getInstance().getStringBytes_ir89t6$(code, start);
+      var desc = 'message ' + gbkString_0(msg);
+      return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_message$lambda(msg, this$ScriptVM), desc, msg.length);
+    };
   }
   function ScriptVM_init$cmd_deletegoods$lambda(closure$type, closure$index, closure$address) {
     return function (it) {
@@ -12017,9 +12246,9 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
       return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_actorlayerup$lambda(this$ScriptVM, actor, toLevel), null, 4);
     };
   }
-  function ScriptVM_init$cmd_boxopen$lambda(this$ScriptVM, closure$id) {
+  function ScriptVM_init$cmd_boxopen$lambda(closure$id, this$ScriptVM) {
     return function (it) {
-      ScriptVM$Companion_getInstance().cmdPrint_61zpoe$('cmd_boxopen');
+      ScriptVM$Companion_getInstance().cmdPrint_61zpoe$('cmd_boxopen ' + closure$id);
       var box = this$ScriptVM.game.mainScene.getNPC_za3lpa$(closure$id);
       box.step = 1;
       return null;
@@ -12028,7 +12257,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
   function ScriptVM_init$cmd_boxopen(this$ScriptVM) {
     return function (code, start) {
       var id = ScriptVM$Companion_getInstance().get2ByteInt_ir89t6$(code, start);
-      return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_boxopen$lambda(this$ScriptVM, id), null, 2);
+      return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_boxopen$lambda(id, this$ScriptVM), null, 2);
     };
   }
   function ScriptVM_init$cmd_delallnpc$lambda(this$ScriptVM) {
@@ -12615,7 +12844,8 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
       return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_return$lambda(this$ScriptVM), 'return', 0);
     };
   }
-  function ScriptVM_init$cmd_timemsg$lambda$ObjectLiteral(closure$text, closure$time) {
+  function ScriptVM_init$cmd_timemsg$lambda$ObjectLiteral(this$ScriptVM, closure$text, closure$time) {
+    this.this$ScriptVM = this$ScriptVM;
     this.closure$text = closure$text;
     this.downKey = 0;
     this.isAnyKeyDown = false;
@@ -12639,20 +12869,26 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     this.downKey = key;
   };
   ScriptVM_init$cmd_timemsg$lambda$ObjectLiteral.prototype.draw_9in0vv$ = function (canvas) {
+    if (!Combat$Companion_getInstance().IsActive()) {
+      this.this$ScriptVM.game.mainScene.drawSceneWithoutClear_9in0vv$(canvas);
+    }
     Util_getInstance().showMessage_2yb3jp$(canvas, this.closure$text);
   };
   ScriptVM_init$cmd_timemsg$lambda$ObjectLiteral.$metadata$ = {kind: Kind_CLASS, interfaces: [Operate]};
-  function ScriptVM_init$cmd_timemsg$lambda(closure$time, closure$text) {
+  function ScriptVM_init$cmd_timemsg$lambda(closure$time, closure$text, this$ScriptVM) {
     return function (it) {
       ScriptVM$Companion_getInstance().cmdPrint_61zpoe$('cmd_timemsg ' + closure$time.v + ' ' + gbkString_0(closure$text));
-      return new ScriptVM_init$cmd_timemsg$lambda$ObjectLiteral(closure$text, closure$time);
+      return new ScriptVM_init$cmd_timemsg$lambda$ObjectLiteral(this$ScriptVM, closure$text, closure$time);
     };
   }
-  function ScriptVM_init$cmd_timemsg(code, start) {
-    var time = {v: ScriptVM$Companion_getInstance().get2ByteInt_ir89t6$(code, start)};
-    var text = ScriptVM$Companion_getInstance().getStringBytes_ir89t6$(code, start + 2 | 0);
-    var desc = 'timemsg ' + time.v + ' ' + gbkString_0(text);
-    return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_timemsg$lambda(time, text), desc, text.length + 2 | 0);
+  function ScriptVM_init$cmd_timemsg(this$ScriptVM) {
+    return function (code, start) {
+      var time = {v: ScriptVM$Companion_getInstance().get2ByteInt_ir89t6$(code, start)};
+      var text = ScriptVM$Companion_getInstance().getStringBytes_ir89t6$(code, start + 2 | 0);
+      var desc = 'timemsg ' + time.v + ' ' + gbkString_0(text);
+      var len = text.length + 2 | 0;
+      return new makeCommand$ObjectLiteral(ScriptVM_init$cmd_timemsg$lambda(time, text, this$ScriptVM), desc, len);
+    };
   }
   function ScriptVM_init$cmd_disablesave$lambda(it) {
     ScriptVM$Companion_getInstance().cmdPrint_61zpoe$('cmd_disablesave');
@@ -13284,6 +13520,8 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     this.BLACK = new Color(0, 0, 0, 255);
     this.TRANSP = new Color(0, 0, 0, 0);
     this.RED = Color_init(255, 0, 0);
+    this.BLUE = Color_init(0, 0, 255);
+    this.GRAY = new Color(128, 128, 128, 255);
   }
   Color$Companion.$metadata$ = {kind: Kind_OBJECT, simpleName: 'Companion', interfaces: []};
   var Color$Companion_instance = null;
@@ -13909,7 +14147,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     return hexByte(it);
   }
   function hexEncode(arr) {
-    return joinToString(arr, '', void 0, void 0, void 0, void 0, hexEncode$lambda);
+    return joinToString_0(arr, '', void 0, void 0, void 0, void 0, hexEncode$lambda);
   }
   function File(path) {
     File$Companion_getInstance();
@@ -14230,6 +14468,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
   package$lib.ResBase = ResBase;
   package$lib.ResGut = ResGut;
   package$lib.ResImage = ResImage;
+  ResMap.TreasureBoxInfo = ResMap$TreasureBoxInfo;
   Object.defineProperty(ResMap, 'Companion', {get: ResMap$Companion_getInstance});
   package$lib.ResMap = ResMap;
   package$lib.ResSrs = ResSrs;
@@ -15891,6 +16130,9 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     NotImplementedError.prototype.constructor = NotImplementedError;
     function contains($receiver, element) {
       return indexOf($receiver, element) >= 0;
+    }
+    function getOrNull($receiver, index) {
+      return index >= 0 && index <= get_lastIndex($receiver) ? $receiver[index] : null;
     }
     function indexOf($receiver, element) {
       if (element == null) {
@@ -20749,6 +20991,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
     package$collections.contains_mjy6jw$ = contains;
     package$collections.get_lastIndex_m7z4lg$ = get_lastIndex;
     package$collections.get_lastIndex_tmsbgo$ = get_lastIndex_2;
+    package$collections.getOrNull_8ujjk8$ = getOrNull;
     package$collections.indexOf_mjy6jw$ = indexOf;
     package$collections.indexOf_jlnu8a$ = indexOf_0;
     package$collections.get_indices_m7z4lg$ = get_indices;
@@ -21120,4 +21363,4 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_
 /******/ })()
 ;
 });
-//# sourceMappingURL=fmj.core.js.map
+//# sourceMappingURL=fmj.core.v2.js.map

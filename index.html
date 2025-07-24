@@ -27,7 +27,7 @@
  * 2. 游戏核心:
  *    - rom.js           : 游戏资源
  *    - kotlin.js        : Kotlin运行时
- *    - fmj.core.js      : 游戏主程序
+ *    - fmj.core.v2.js      : 游戏主程序
  */
 -->
 <!DOCTYPE html>
@@ -39,7 +39,7 @@
     <script src="libs/js/encoding-indexes.js"></script>
     <script src="libs/js/encoding.js"></script>
     <script src="libs/js/sys.js"></script>
-    <script src="assets/rom.js"></script>
+    <script src="libs/js/rom.js"></script>
 
     <style>
       body {
@@ -48,11 +48,12 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        min-height: 100vh;
-        padding: 20px;
+        height: 100vh; /* 使用height而不是min-height */
+        padding: 10px; /* 减少padding */
         box-sizing: border-box;
         color: #fff;
         font-family: "Courier New", monospace;
+        overflow: hidden; /* 防止整体页面滚动 */
       }
       .game-container {
         position: relative;
@@ -60,9 +61,13 @@
         max-width: 1280px;
         margin: 0 auto;
         background: #000;
-        padding: 20px;
+        padding: 10px; /* 减少padding */
         border-radius: 8px;
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        flex: 1; /* 让游戏容器占用可用空间 */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* 防止容器内滚动 */
       }
       .lcd {
         position: relative;
@@ -91,7 +96,7 @@
         background: #fff;
       }
       .scale-controls {
-        margin: 15px 0;
+        margin: 8px 0; /* 减少margin */
         text-align: center;
       }
       .scale-controls button {
@@ -111,6 +116,41 @@
       }
       .scale-controls button.active {
         background: #666;
+      }
+      .game-controls {
+        margin: 8px 0; /* 减少margin */
+        text-align: center;
+      }
+      .game-controls button {
+        background: #2a5934;
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        margin: 0 5px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: "Courier New", monospace;
+        font-size: 14px;
+        transition: all 0.3s;
+        outline: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .game-controls button:hover {
+        background: #3a6f44;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      }
+      .game-controls button:active {
+        background: #1e4028;
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      }
+      .game-controls button:disabled {
+        background: #555;
+        color: #888;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
       }
       .controls {
         margin-top: 20px;
@@ -136,33 +176,58 @@
         animation: blink 1s infinite;
       }
       
+      .treasure-box {
+        transition: opacity 0.2s ease;
+      }
+      
+      .treasure-box:hover {
+        opacity: 0.8;
+        z-index: 30 !important;
+      }
+      
       /* 地图调试区域响应式设计 */
       #map-debug {
         max-width: 100%;
         box-sizing: border-box;
+        margin-top: 10px; /* 减少顶部间距 */
+        padding: 10px; /* 减少padding */
+        flex-shrink: 0; /* 防止收缩 */
       }
       
       #map-container {
         width: 100%;
         max-width: 800px; /* 最大宽度限制 */
-        margin: 10px auto; /* 居中显示 */
+        margin: 5px auto; /* 减少margin */
       }
       
       #map-preview {
         min-width: 200px; /* 最小宽度 */
-        max-height: 60vh; /* 最大高度为视口高度的60% */
+        max-height: 40vh; /* 减少最大高度为视口高度的40% */
         object-fit: contain; /* 保持宽高比 */
       }
       
       /* 响应式布局 */
       @media (max-width: 768px) {
+        body {
+          padding: 5px; /* 小屏幕更少padding */
+        }
+        
+        .game-container {
+          padding: 5px; /* 小屏幕更少padding */
+        }
+        
         #map-container {
           max-width: 100%;
-          padding: 8px;
+          padding: 5px;
         }
         
         #map-preview {
-          max-height: 50vh;
+          max-height: 30vh; /* 小屏幕更小高度 */
+        }
+        
+        #map-debug {
+          padding: 5px;
+          margin-top: 5px;
         }
       }
       
@@ -172,7 +237,7 @@
         }
         
         #map-preview {
-          max-height: 70vh;
+          max-height: 45vh; /* 大屏幕适中高度 */
         }
       }
     </style>
@@ -190,10 +255,14 @@
         <button onclick="toggleFullscreen()">全屏</button>
       </div>
       
+      <!-- 游戏控制按钮 -->
+      <div class="game-controls">
+        <button onclick="repeatLastAction()" id="repeatBtn" title="重复上次战斗动作 (R键)">🔄 重复动作</button>
+      </div>
+      
     
     <!-- 地图调试区域 -->
-    <div id="map-debug" style="margin-top: 20px; background: #333; padding: 15px; border-radius: 4px; color: #fff; font-family: 'Courier New', monospace; display: none;">
-      <h3 style="margin-top: 0; color: #ccc;">当前实时地图</h3>
+    <div id="map-debug" style="margin-top: 10px; background: #333; padding: 5px; border-radius: 4px; color: #fff; font-family: 'Courier New', monospace; display: none;">
       <div id="map-container" style="background: #000; padding: 10px; border-radius: 4px; margin: 10px 0; position: relative;">
         <img id="map-preview" src="" alt="地图预览" style="width: 100%; max-width: 100%; height: auto; border: 1px solid #666; image-rendering: pixelated; display: block;" />
         <div id="player-dot" style="position: absolute; background: red; border-radius: 50%; display: none; z-index: 10; box-shadow: 0 0 4px rgba(255,0,0,0.8);"></div>
@@ -212,7 +281,7 @@
   </div>
 
     <script src="out/production/fmj.core/kotlin.js"></script>
-    <script src="out/production/fmj.core/fmj.core.js"></script>
+    <script src="out/production/fmj.core/fmj.core.v2.js"></script>
     <script>
       // 缩放控制
       function setScale(scale) {
@@ -308,6 +377,9 @@
       // 存储当前玩家位置数据，用于窗口大小变化时重新计算
       let currentPlayerPosition = null;
       
+      // 存储当前宝箱位置数据，用于窗口大小变化时重新计算
+      let currentTreasureBoxes = null;
+      
       // 更新玩家位置的闪烁点
       function updatePlayerPosition(relativeX, relativeY, mapX, mapY, mapWidth, mapHeight) {
         // 保存当前位置数据
@@ -371,7 +443,103 @@
         }
       }
       
-      // 窗口大小变化时重新计算玩家位置
+      // 更新宝箱位置信息
+      function updateTreasureBoxes(treasureBoxes, mapWidth, mapHeight) {
+        // 保存当前宝箱数据
+        currentTreasureBoxes = { treasureBoxes, mapWidth, mapHeight };
+        
+        const mapContainer = document.getElementById('map-container');
+        const mapPreview = document.getElementById('map-preview');
+        
+        if (!mapContainer || !mapPreview) return;
+        
+        // 移除现有的所有宝箱点
+        const existingBoxes = mapContainer.querySelectorAll('.treasure-box');
+        existingBoxes.forEach(box => box.remove());
+        
+        // 等待图片加载完成
+        if (mapPreview.naturalWidth === 0) {
+          mapPreview.onload = function() {
+            positionTreasureBoxes();
+          };
+          return;
+        }
+        
+        positionTreasureBoxes();
+        
+        function positionTreasureBoxes() {
+          // 获取图片的实际显示尺寸
+          const imgRect = mapPreview.getBoundingClientRect();
+          const containerRect = mapContainer.getBoundingClientRect();
+          
+          // 计算一个tile在当前显示尺寸下的大小
+          const tileDisplayWidth = imgRect.width / mapWidth;
+          const tileDisplayHeight = imgRect.height / mapHeight;
+          
+          // 为每个宝箱创建标记点
+          treasureBoxes.forEach((box, index) => {
+            const boxElement = document.createElement('div');
+            boxElement.className = 'treasure-box';
+            boxElement.dataset.boxIndex = index;
+            boxElement.dataset.boxName = box.name;
+            boxElement.dataset.isCollected = box.isCollected;
+            
+            // 计算宝箱在地图中的相对位置
+            const relativeX = box.x / mapWidth;
+            const relativeY = box.y / mapHeight;
+            
+            // 计算宝箱在图片上的像素位置
+            const boxX = relativeX * imgRect.width + tileDisplayWidth / 2;
+            const boxY = relativeY * imgRect.height + tileDisplayWidth / 2;
+            
+            // 相对于容器的位置
+            const imgOffsetX = mapPreview.offsetLeft;
+            const imgOffsetY = mapPreview.offsetTop;
+            
+            // 宝箱点的大小应该略小于tile大小，但不小于3px，不大于8px（缩小到一半）
+            const boxSize = Math.max(3, Math.min(8, Math.min(tileDisplayWidth, tileDisplayHeight) * 0.4));
+            const halfBoxSize = boxSize / 2;
+            
+            // 设置宝箱样式和位置
+            boxElement.style.width = boxSize + 'px';
+            boxElement.style.height = boxSize + 'px';
+            boxElement.style.left = (imgOffsetX + boxX - halfBoxSize) + 'px';
+            boxElement.style.top = (imgOffsetY + boxY - halfBoxSize) + 'px';
+            boxElement.style.position = 'absolute';
+            boxElement.style.borderRadius = '2px';
+            boxElement.style.border = '1px solid #000';
+            boxElement.style.zIndex = '20';
+            boxElement.style.cursor = 'pointer';
+            
+            // 根据宝箱状态设置颜色
+            if (box.isCollected) {
+              boxElement.style.backgroundColor = '#888'; // 灰色 - 已收集
+              boxElement.style.boxShadow = '0 0 2px rgba(136,136,136,0.8)';
+              boxElement.title = `宝箱: ${box.name} (已收集)`;
+            } else {
+              boxElement.style.backgroundColor = '#00f'; // 蓝色 - 未收集
+              boxElement.style.boxShadow = '0 0 4px rgba(0,0,255,0.8)';
+              boxElement.title = `宝箱: ${box.name} (未收集)`;
+            }
+            
+            // 添加点击事件（可选）
+            boxElement.addEventListener('click', function() {
+              console.log(`点击了宝箱: ${box.name} at (${box.x}, ${box.y}), 已收集: ${box.isCollected}`);
+            });
+            
+            mapContainer.appendChild(boxElement);
+          });
+          
+          console.log('Treasure boxes updated:', {
+            count: treasureBoxes.length,
+            mapSize: [mapWidth, mapHeight],
+            imgSize: [imgRect.width, imgRect.height],
+            tileSize: [tileDisplayWidth, tileDisplayHeight]
+          });
+        }
+      }
+      
+      // 窗口大小变化时重新计算玩家位置和宝箱位置
       function recalculatePlayerPosition() {
         if (currentPlayerPosition) {
           updatePlayerPosition(
@@ -383,11 +551,82 @@
             currentPlayerPosition.mapHeight
           );
         }
+        
+        // 同时重新计算宝箱位置
+        if (currentTreasureBoxes) {
+          updateTreasureBoxes(
+            currentTreasureBoxes.treasureBoxes,
+            currentTreasureBoxes.mapWidth,
+            currentTreasureBoxes.mapHeight
+          );
+        }
+      }
+
+      // 重复上次动作功能
+      function repeatLastAction() {
+        try {
+          // 方法1: 直接调用游戏的键盘处理
+          const core = window["fmj.core"];
+          if (core && core.fmj && core.fmj.combat.Combat.Companion.IsActive()) {
+            // 直接发送KEY_REPEAT(9)到游戏
+            core.fmj.combat.Combat.Companion.KeyDown(9);
+          } else {
+            // 方法2: 如果战斗不活跃，尝试触发键盘事件
+            const event = jQuery.Event('keydown', {
+              keyCode: 82,  // R键的keyCode
+              which: 82
+            });
+            $('body').trigger(event);
+          }
+        } catch (e) {
+          console.log('重复动作失败:', e);
+          // 方法3: 备选方案，直接模拟键盘事件
+          const event = jQuery.Event('keydown', {
+            keyCode: 82,  // R键的keyCode
+            which: 82
+          });
+          $('body').trigger(event);
+        }
+        
+        // 添加视觉反馈
+        const btn = document.getElementById('repeatBtn');
+        if (btn) {
+          btn.style.background = '#1e4028';
+          setTimeout(() => {
+            btn.style.background = '#2a5934';
+          }, 150);
+        }
+      }
+
+      // 检查游戏状态并更新按钮可用性
+      function updateGameControlButtons() {
+        const repeatBtn = document.getElementById('repeatBtn');
+        if (repeatBtn) {
+          // 这里可以根据游戏状态来启用/禁用按钮
+          // 例如：只在战斗状态下启用
+          try {
+            const core = window["fmj.core"];
+            const isCombatActive = core && core.fmj.combat.Combat.Companion.IsActive();
+            repeatBtn.disabled = !isCombatActive;
+            repeatBtn.title = isCombatActive 
+              ? "重复上次战斗动作 (R键)" 
+              : "只在战斗中可用";
+          } catch (e) {
+            // 如果游戏还没加载完成，保持按钮启用
+            repeatBtn.disabled = false;
+          }
+        }
       }
 
       // 将函数添加到全局作用域，供Kotlin调用
       window.showMapBase64 = showMapBase64;
       window.updatePlayerPosition = updatePlayerPosition;
+      window.updateTreasureBoxes = updateTreasureBoxes;
+      window.repeatLastAction = repeatLastAction;
+      window.updateGameControlButtons = updateGameControlButtons;
+      
+      // 控制是否显示地图容器中的物品和关键点，默认为 ture
+      window.mapContainerState = window.mapContainerState || true;
 
       // 等待所有脚本加载完成
       window.onload = function () {
@@ -410,13 +649,16 @@
         // 游戏速度，默认是1倍速
         window.gameSpeedMultiple = setGameSpeedMultiple;
         function setGameSpeedMultiple(multiple) {
-          let game = core.MainGame_init()
+          let game = window.fmjGame;
           if (game && typeof game.listenUIEvents_14dthe$ === 'function') {
             game.listenUIEvents_14dthe$(multiple);
             return true;
-        }
+          }
           return false;
         }
+
+        // 启动按钮状态更新定时器
+        setInterval(updateGameControlButtons, 500); // 每500ms更新一次
       };
 
       // 监听窗口大小变化

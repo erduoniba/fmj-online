@@ -80,7 +80,7 @@ function sysClearInterval(id) {
                 return KEY_PAGEUP;
             case 221:
                 return KEY_PAGEDOWN;
-            case 55:  // 数字键7
+            case 82:  // R键
                 return 9;  // KEY_REPEAT
             default:
                 return 255;
@@ -90,7 +90,6 @@ function sysClearInterval(id) {
     function getLCD() {
         var canvas = document.getElementById('lcd');
         var ctx = canvas.getContext('2d');
-        canvas.style.imageRendering = "pixelated"; // 添加CSS属性
         return ctx;
     }
 
@@ -121,6 +120,9 @@ function sysClearInterval(id) {
     };
 
     global.sysStorageSet = function(path, value) {
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sysStorageSet) {
+            window.webkit.messageHandlers.sysStorageSet.postMessage({ path, value });
+        } 
         return getStorage(path)[path] = value;
     };
 
@@ -173,18 +175,11 @@ function sysClearInterval(id) {
 
         var img = lcd.createImageData(wid, hgt);
 
-        const data = img.data;
         for (var y = 0; y < h; y += 1) {
             for (var x = 0; x < w; x += 1) {
                 var ind = w*y + x;
                 var pixel = buffer[ind];
-
-                const dstIdx = (y * w + x) * 4;
-                // 直接写入像素数据 (绕过函数调用开销)
-                data[dstIdx] = pixel.r;     // R
-                data[dstIdx + 1] = pixel.g; // G
-                data[dstIdx + 2] = pixel.b; // B
-                data[dstIdx + 3] = pixel.a; // A
+                imageDot(img, x, y, w, pixel);
             }
         }
         lcd.imageSmoothingEnabled = false;
@@ -266,4 +261,3 @@ function enableDebug() {
         }
     };
 }
-
